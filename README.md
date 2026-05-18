@@ -43,13 +43,31 @@ Backend Setup
 cd backend
 npm install
 
-Create a .env file:
+Create a backend `.env` file (or set the following environment variables in your host):
 
 OPENAI_API_KEY=your_openai_api_key
+# OR (alternative) OPENROUTER_API_KEY=your_openrouter_api_key
+
+# Optional / recommended server vars
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_API_BASE=
+OPENROUTER_BASE_URL=https://api.openrouter.ai/v1
+VAPI_PRIVATE_KEY=
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE=
+PORT=3001
+ALLOWED_ORIGINS=http://localhost:5173
+
+You can use the included `.env.example` as a template — copy it to the repo root or to `backend/.env` and fill in your secrets.
 
 Run the backend:
 
 npm run dev
+
+OpenRouter (optional)
+If you prefer to use OpenRouter instead of OpenAI, set `OPENROUTER_API_KEY` in your backend environment (or in the repo `env.env`). The backend maps `OPENROUTER_API_KEY` → `OPENAI_API_KEY` automatically. Optionally override the base URL with `OPENROUTER_BASE_URL` (default: `https://api.openrouter.ai/v1`).
+
+To run the backend with the debugger attached, the provided VS Code launch config sets `NODE_OPTIONS=--inspect=9229` for the backend run configuration. See the **VS Code Launch** section below.
 
 Frontend Setup
 cd frontend
@@ -64,6 +82,14 @@ npm run dev
 Running the App
 Frontend: http://localhost:3000
 Backend: http://localhost:3001
+ 
+VS Code Launch
+This repo includes a `.vscode/launch.json` with three helpful configurations:
+- `Backend: Run (dev)` — starts the backend dev server (`npm run dev`) with the Node inspector enabled on port 9229.
+- `Backend: Attach` — attach the VS Code debugger to a backend process listening on port 9229.
+- `Frontend: Run (Vite)` — starts the frontend dev server (`npm run dev`).
+
+You can also use the compound `Start Full Stack (Backend + Frontend)` to start both dev servers from the Run view.
 How It Works
 User starts a mock interview
 ElevenLabs agent conducts a voice-based interview

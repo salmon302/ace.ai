@@ -8,6 +8,7 @@ node_modules/
 .env.*.local
 backend/.env
 frontend/.env
+env.env
 
 # Playwright
 /test-results/
