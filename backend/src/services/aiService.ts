@@ -89,6 +89,14 @@ export async function generateFollowUp(
   return res.choices[0]?.message.content ?? "";
 }
 
+export async function streamChatCompletion(messages: any[]) {
+  return await openai.chat.completions.create({
+    model: OPENAI_MODEL,
+    messages: messages,
+    stream: true,
+  });
+}
+
 export async function evaluateInterview(
   messages: Message[],
   config: InterviewConfig,

@@ -14,6 +14,7 @@ import executeRoutes from "./routes/execute";
 import vapiRoutes from "./routes/vapi";
 import analysisRoutes from "./routes/analysis";
 import authRoutes from "./routes/auth";
+import tokenRoutes from "./routes/tokens";
 import { authMiddleware } from "./middleware/auth";
 import { globalLimiter, authLimiter, aiLimiter, executeLimiter } from "./middleware/rateLimiter";
 
@@ -60,6 +61,7 @@ app.use("/api/vapi", vapiRoutes);
 app.use("/api/execute", authMiddleware, executeLimiter, executeRoutes);
 app.use("/api/analysis", authMiddleware, aiLimiter, analysisRoutes);
 app.use("/api/interviews", authMiddleware, interviewsRoutes);
+app.use("/api/tokens", authMiddleware, tokenRoutes);
 
 // Centralized error handler — never leak internals
 app.use(

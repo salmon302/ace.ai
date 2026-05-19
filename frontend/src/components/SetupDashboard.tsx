@@ -495,7 +495,8 @@ export function SetupDashboard() {
                 // Stop any active voice preview before entering the interview
                 previewCleanupRef.current?.();
                 const isTechnical = questionType === "technical";
-                const route = isTechnical ? "/technical-interview" : "/interview/voice";
+                // Temporary toggle Switch or simple logic to prefer manual pipeline for behavioral
+                const route = isTechnical ? "/technical-interview" : "/interview/manual";
                 navigate(route, {
                   state: {
                     role,

@@ -6,6 +6,7 @@ import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
 import { DashboardDemo } from "./components/DashboardDemo";
 import { TechnicalInterviewLayout } from "./components/TechnicalInterview/TechnicalInterviewLayout";
 import { VapiInterviewPanel } from "./components/VapiInterviewPanel";
+import { ManualVoiceInterviewPanel } from "./components/ManualVoiceInterviewPanel";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
   {
     path: "/interview/voice",
     element: <ProtectedRoute><VapiInterviewPanel /></ProtectedRoute>,
+  },
+  {
+    path: "/interview/manual",
+    element: <ProtectedRoute><ManualVoiceInterviewPanel /></ProtectedRoute>,
   },
   {
     path: "/technical-interview",

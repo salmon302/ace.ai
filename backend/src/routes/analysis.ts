@@ -1,11 +1,37 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { analyzeVapiTranscript, generateInterviewQuestions } from "../services/aiService";
+import { analyzeVapiTranscript, generateInterviewQuestions, streamChatCompletion } from "../services/aiService";
 import { saveInterview, getInterviews } from "../services/storageService";
 import type { VapiTranscriptEntry, VapiInterviewConfig } from "../types/interview";
 import { validateQuestionGeneration, validateTranscriptEvaluation } from "../middleware/validate";
 
 const router = Router();
+
+// Streaming chat endpoint for voice interviews
+router.post("/chat", async (req: Request, res: Response) => {
+  try {
+    const { messages } = req.body;
+    
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const stream = await streamChatCompletion(messages);
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || "";
+      if (content) {
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (err) {
+    console.error("Error in streaming chat:", err);
+    res.status(500).end();
+  }
+});
 
 // POST /api/analysis/questions — generate 3 role-aware technical questions
 router.post("/questions", validateQuestionGeneration, async (req: Request, res: Response) => {
