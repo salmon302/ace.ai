@@ -199,15 +199,29 @@ async function generateGeneralQuestions(
   difficulty: string,
   level: string,
   language: string,
+  jobDescription?: string,
+  resume?: string
 ): Promise<CodingProblem[]> {
   const guidelines = ROLE_GUIDELINES[role] ?? "software engineering fundamentals";
   const signatureExample = SIGNATURE_GUIDE[language] ?? SIGNATURE_GUIDE["JavaScript"]!;
+
+  let contextInstructions = "";
+  if (role === "custom" && jobDescription) {
+    contextInstructions = `Generate problems specifically tailored to this Job Description: ${jobDescription}. `;
+  } else if (jobDescription) {
+    contextInstructions = `Consider this Job Description as additional context: ${jobDescription}. `;
+  }
+
+  if (resume) {
+    contextInstructions += `Consider the candidate's Resume/Context when framing the problem domains: ${resume}. `;
+  }
 
   const prompt = `You are a senior ${role} engineer creating a ${level}-level ${difficulty} technical coding interview.
 
 The candidate must write code in ${language} ONLY. Do not use any other programming language.
 
 Focus on: ${guidelines}
+${contextInstructions}
 
 Generate EXACTLY 3 coding problems. Each problem must:
 - Be a realistic, role-relevant coding challenge (not a pure abstract algorithm)
@@ -266,10 +280,12 @@ export async function generateInterviewQuestions(
   difficulty: string,
   level: string,
   language = "JavaScript",
+  jobDescription?: string,
+  resume?: string
 ): Promise<CodingProblem[]> {
   const isML = role === "ml" || role === "machine_learning";
   if (isML) return generateMLQuestions(difficulty, level);
-  return generateGeneralQuestions(role, difficulty, level, language);
+  return generateGeneralQuestions(role, difficulty, level, language, jobDescription, resume);
 }
 
 // ── Vapi transcript analysis ───────────────────────────────────────────────

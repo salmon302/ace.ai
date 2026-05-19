@@ -36,6 +36,15 @@ supabase.auth.onAuthStateChange((_event, session) => {
   _cachedUser = sessionToUser(session);
 });
 
+// For offline development, if no keys are set, we provide a default dev user.
+if (!import.meta.env.VITE_SUPABASE_URL) {
+  _cachedUser = {
+    id: "admin-uuid-0000-0000-000000000000",
+    email: "admin@offline.local",
+    name: "Admin User",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Public API — same signatures as the old auth.ts so no call sites change
 // ---------------------------------------------------------------------------
@@ -113,19 +122,24 @@ export function clearSession(): void {
 // ---------------------------------------------------------------------------
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  // In offline mode, use a dummy dev token that the backend now recognizes.
+  const token = session?.access_token ?? "dev-token";
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined ?? {}),
   };
+  
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
-  if (res.status === 401) {
+  if (res.status === 401 && !import.meta.env.VITE_SUPABASE_URL) {
+    // Basic catch for actual failure, but don't redirect if we're in offline-dev
+    console.error("API call failed in offline mode");
+  } else if (res.status === 401) {
     await supabase.auth.signOut();
     _cachedUser = null;
     window.location.href = "/login";

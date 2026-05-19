@@ -11,9 +11,14 @@ import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
 import { InterviewsPage } from "./pages/InterviewsPage";
 import { InterviewReplayPage } from "./pages/InterviewReplayPage";
+import { ElevenLabsTester } from "./components/ElevenLabsTester";
 
 export const router = createBrowserRouter([
   // Public routes
+  {
+    path: "/test-11labs",
+    Component: ElevenLabsTester,
+  },
   {
     path: "/login",
     Component: LoginPage,

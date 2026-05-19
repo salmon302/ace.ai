@@ -1,6 +1,11 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import { validateEnv } from "./config";
+// Validate required environment variables before importing modules that
+// may instantiate the Supabase client at import time.
+validateEnv();
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -10,7 +15,6 @@ import vapiRoutes from "./routes/vapi";
 import analysisRoutes from "./routes/analysis";
 import authRoutes from "./routes/auth";
 import { authMiddleware } from "./middleware/auth";
-import { validateEnv } from "./config";
 import { globalLimiter, authLimiter, aiLimiter, executeLimiter } from "./middleware/rateLimiter";
 
 const app = express();

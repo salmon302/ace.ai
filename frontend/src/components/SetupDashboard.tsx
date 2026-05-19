@@ -39,6 +39,19 @@ export function SetupDashboard() {
   const [selectedInterviewer, setSelectedInterviewer] = useState(0);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [previewingKey, setPreviewingKey] = useState<string | null>(null);
+
+  // New features:
+  const [jobDescription, setJobDescription] = useState("");
+  const [resume, setResume] = useState("");
+  const [selectedModel, setSelectedModel] = useState("tencent/hunyuan-video"); // Dummy default for now
+  const [elevenLabsModel, setElevenLabsModel] = useState("eleven_monolingual_v1");
+  
+  const models = [
+    { id: "tencent/hunyuan-video", label: "Tencent Hy3 Preview" },
+    { id: "qwen/qwen-2.5-72b-instruct", label: "Qwen 2.5 (3.6)" },
+    { id: "deepseek/deepseek-chat", label: "DeepSeek V3 (Flash)" },
+  ];
+
   const previewCleanupRef = useRef<(() => void) | null>(null);
 
   const experienceLevels = ["Intern", "Entry", "Junior", "Senior"];
@@ -60,7 +73,13 @@ export function SetupDashboard() {
 
     const key = interviewerName.toLowerCase();
     const interviewer = INTERVIEWERS[key] ?? INTERVIEWERS["cassidy"]!;
-    const resolvedVoice = resolveVoice(interviewer.voice);
+    
+    const voiceConfig = { ...interviewer.voice };
+    if (voiceConfig.provider === "11labs") {
+      voiceConfig.modelId = elevenLabsModel;
+    }
+    
+    const resolvedVoice = resolveVoice(voiceConfig);
     const previewText = `Hi, I'm ${interviewer.name}. I'll be your interviewer today.`;
 
     console.log("Previewing voice:", key);
@@ -169,7 +188,40 @@ export function SetupDashboard() {
                 <option value="devops">DevOps Engineer</option>
                 <option value="security">Cybersecurity Engineer</option>
                 <option value="systems">Systems Engineer</option>
+                <option value="custom">Custom Role (JD-based)</option>
               </select>
+            </div>
+
+            {/* Job Description (Custom Role) */}
+            {role === "custom" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="space-y-3"
+              >
+                <label className="block text-sm font-medium text-gray-700">
+                  Job Description
+                </label>
+                <textarea
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  placeholder="Paste the job description here..."
+                  className="w-full px-4 py-3 bg-white/60 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 resize-none text-sm"
+                />
+              </motion.div>
+            )}
+
+            {/* Resume Upload / Context */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Candidate Resume / Context
+              </label>
+              <textarea
+                value={resume}
+                onChange={(e) => setResume(e.target.value)}
+                placeholder="Paste your resume or additional experience details here..."
+                className="w-full px-4 py-3 bg-white/60 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 h-24 resize-none text-sm"
+              />
             </div>
 
             {/* Question Type Toggle */}
@@ -331,6 +383,61 @@ export function SetupDashboard() {
                 ))}
               </div>
             </div>
+
+            {/* ElevenLabs Model Setting */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ElevenLabs Voice Model
+              </label>
+              <div className="flex bg-white/60 p-1 rounded-xl border border-gray-200 shadow-sm">
+                <button
+                  onClick={() => setElevenLabsModel("eleven_monolingual_v1")}
+                  className={`flex-1 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    elevenLabsModel === "eleven_monolingual_v1"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Standard (Monolingual v1)
+                </button>
+                <button
+                  onClick={() => setElevenLabsModel("eleven_multilingual_v2")}
+                  className={`flex-1 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    elevenLabsModel === "eleven_multilingual_v2"
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  Turbo (Multilingual v2)
+                </button>
+              </div>
+              <p className="mt-2 text-[10px] text-gray-400 px-1">
+                Both models are included in ElevenLabs' free tier. Monolingual v1 is standard; Multilingual v2 offers lower latency (Turbo).
+              </p>
+            </div>
+
+            {/* OpenRouter Model Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Interview Intelligence (OpenRouter Model)
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {models.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedModel(m.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-medium transition-all text-left border ${
+                      selectedModel === m.id
+                        ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                        : "bg-white/60 text-gray-600 border-gray-200 hover:bg-white/80"
+                    }`}
+                  >
+                    <div className="font-bold">{m.label}</div>
+                    <div className="text-[10px] opacity-70 truncate">{m.id}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </motion.div>
 
           {/* Right Panel - Interviewer Preview */}
@@ -396,6 +503,10 @@ export function SetupDashboard() {
                     language: questionType === "technical" ? language : undefined,
                     difficulty: questionDifficulty[0],
                     strictness: interviewerStrictness[0],
+                    jobDescription: role === "custom" ? jobDescription : undefined,
+                    resume: resume || undefined,
+                    model: selectedModel,
+                    elevenLabsModel: elevenLabsModel,
                     // Normalize 0–3 index to 0–100 scale expected by both hooks
                     // Intern→0, Entry→25, Junior→50, Senior→100
                     experienceLevel: [0, 25, 50, 100][experienceLevel[0]] ?? 50,

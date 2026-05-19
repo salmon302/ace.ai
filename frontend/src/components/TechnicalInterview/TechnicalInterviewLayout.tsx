@@ -89,6 +89,9 @@ export function TechnicalInterviewLayout() {
     strictness?: number;
     experienceLevel?: number;
     interviewer?: string;
+    jobDescription?: string;
+    resume?: string;
+    model?: string;
   } | null;
 
   const role = state?.role ?? "frontend";
@@ -96,6 +99,10 @@ export function TechnicalInterviewLayout() {
   const interviewer = state?.interviewer;
   const difficultyValue = state?.difficulty ?? 50;
   const experienceLevelValue = state?.experienceLevel ?? 50;
+  const jobDescription = state?.jobDescription;
+  const resume = state?.resume;
+  const model = state?.model;
+
   const selectedTopics: string[] = (state as { selectedTopics?: string[] } | null)?.selectedTopics ?? [];
 
   const difficultyLabel = difficultyValue <= 30 ? "easy" : difficultyValue <= 60 ? "medium" : "hard";
@@ -125,7 +132,7 @@ export function TechnicalInterviewLayout() {
     } else {
       // No topics — generate via AI
       console.log("Role:", role, "Language:", language);
-      generateInterviewQuestions(role, difficultyLabel, level, language)
+      generateInterviewQuestions(role, difficultyLabel, level, language, jobDescription, resume)
         .then((ps) => {
           console.log("AI-generated coding problems:", ps);
           setProblems(ps);
@@ -149,6 +156,9 @@ export function TechnicalInterviewLayout() {
     level,
     interviewer,
     selectedTopics,
+    jobDescription,
+    resume,
+    model,
   };
 
   const handleStart = () => {

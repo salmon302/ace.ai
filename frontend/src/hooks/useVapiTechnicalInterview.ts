@@ -28,10 +28,25 @@ export interface VapiTechnicalConfig {
   level: string;
   interviewer?: string;
   selectedTopics?: string[];
+  jobDescription?: string;
+  resume?: string;
+  model?: string;
+  elevenLabsModel?: string;
 }
 
 function buildTechnicalSystemPrompt(config: VapiTechnicalConfig): string {
   const roleLabel = config.role.charAt(0).toUpperCase() + config.role.slice(1);
+
+  let jdResumeInstructions = "";
+  if (config.jobDescription && config.role === "custom") {
+    jdResumeInstructions += `\n\n### JOB DESCRIPTION (Context for Interview):\n${config.jobDescription}\n\nYou are interviewing for this specific role. Tailor all technical and situational questions to the requirements and stack mentioned in this JD.`;
+  } else if (config.jobDescription) {
+    jdResumeInstructions += `\n\n### JOB DESCRIPTION (Additional Context):\n${config.jobDescription}`;
+  }
+
+  if (config.resume) {
+    jdResumeInstructions += `\n\n### CANDIDATE RESUME/CONTEXT:\n${config.resume}\n\nUse this resume to challenge the candidate on their claimed experience and deep-dive into their projects.`;
+  }
 
   let difficultyInstructions: string;
   if (config.difficulty <= 30) {
@@ -264,7 +279,13 @@ export function useVapiTechnicalInterview() {
 
       const interviewerKey = (config.interviewer ?? "cassidy").toLowerCase();
       const interviewer = INTERVIEWERS[interviewerKey] ?? INTERVIEWERS["cassidy"]!;
-      const resolvedVoice = resolveVoice(interviewer.voice);
+      
+      const voiceConfig = { ...interviewer.voice };
+      if (voiceConfig.provider === "11labs" && config.elevenLabsModel) {
+        voiceConfig.modelId = config.elevenLabsModel;
+      }
+      
+      const resolvedVoice = resolveVoice(voiceConfig);
       console.log("Using interviewer:", interviewerKey);
       console.log("Resolved voice:", resolvedVoice);
 
@@ -273,10 +294,10 @@ export function useVapiTechnicalInterview() {
       console.log("Technical system prompt length:", systemPrompt.length);
       console.log("Generated questions:", config.questions);
 
-      const assistantConfig: CreateAssistantDTO = {
+      const assistantConfig: any = {
         model: {
           provider: "openai",
-          model: "gpt-4.1",
+          model: config.model || "gpt-4.1",
           messages: [{ role: "system", content: systemPrompt }],
         },
         voice: resolvedVoice,
@@ -285,6 +306,7 @@ export function useVapiTechnicalInterview() {
         backgroundSpeechDenoisingPlan: {
           smartDenoisingPlan: { enabled: true },
         },
+        silenceTimeoutSeconds: 30,
       };
       await vapi.start(assistantConfig);
     } catch (err) {

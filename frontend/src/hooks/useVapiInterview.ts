@@ -5,13 +5,17 @@ import type { VapiAnalysisResult } from "../services/api";
 import type { CreateAssistantDTO, ElevenLabsVoice, VapiVoice } from "@vapi-ai/web/dist/api";
 
 // Discriminated union using the SDK's exact voiceId constraints
-type ElevenLabsVoiceConfig = { provider: "11labs"; voiceId: string };
+type ElevenLabsVoiceConfig = { provider: "11labs"; voiceId: string; modelId?: string };
 type VapiVoiceConfig = { provider: "vapi"; voiceId: VapiVoice["voiceId"] };
 type VoiceConfig = ElevenLabsVoiceConfig | VapiVoiceConfig;
 
-export function resolveVoice(voice: VoiceConfig): ElevenLabsVoice | VapiVoice {
+export function resolveVoice(voice: VoiceConfig): any {
   if (voice.provider === "11labs") {
-    return { provider: "11labs", voiceId: voice.voiceId };
+    return { 
+      provider: "11labs", 
+      voiceId: voice.voiceId,
+      model: voice.modelId || "eleven_monolingual_v1"
+    };
   }
   return { provider: "vapi", voiceId: voice.voiceId };
 }
@@ -67,6 +71,10 @@ export interface VapiInterviewConfig {
   strictness: number;
   questionType: "behavioral" | "technical";
   interviewer?: string;
+  jobDescription?: string;
+  resume?: string;
+  model?: string;
+  elevenLabsModel?: string;
 }
 
 const ROLE_TOPICS: Record<string, string> = {
@@ -155,9 +163,20 @@ Every question must tie back to technical work. Don't ask generic behavioral que
 Ask coding concepts, system design, debugging scenarios, and architecture questions. No behavioral questions at all. Dive straight into technical topics.`;
   }
 
+  let jdResumeInstructions = "";
+  if (config.jobDescription && config.role === "custom") {
+    jdResumeInstructions += `\n\n### JOB DESCRIPTION (Context for Interview):\n${config.jobDescription}\n\nYou are interviewing for this specific role. Tailor all technical and situational questions to the requirements and stack mentioned in this JD.`;
+  } else if (config.jobDescription) {
+    jdResumeInstructions += `\n\n### JOB DESCRIPTION (Additional Context):\n${config.jobDescription}`;
+  }
+
+  if (config.resume) {
+    jdResumeInstructions += `\n\n### CANDIDATE RESUME/CONTEXT:\n${config.resume}\n\nUse this resume to challenge the candidate on their claimed experience and deep-dive into their projects.`;
+  }
+
   return `${interviewerPersonality}
 
-You're a senior ${roleLabel} engineering interviewer.
+You're a senior ${roleLabel} engineering interviewer. ${jdResumeInstructions}
 
 You only ask questions about software engineering, computer science, and technology. Your focus area is ${topics}.
 If the candidate tries to go off-topic or ask you questions, redirect them. Say something like "That's an interesting thought, but let's stay focused on the interview." Then ask your next question.
@@ -332,7 +351,13 @@ export function useVapiInterview() {
 
       const interviewerKey = (config.interviewer ?? "cassidy").toLowerCase();
       const interviewer = INTERVIEWERS[interviewerKey] ?? INTERVIEWERS["cassidy"]!;
-      const resolvedVoice = resolveVoice(interviewer.voice);
+      
+      const voiceConfig = { ...interviewer.voice };
+      if (voiceConfig.provider === "11labs" && config.elevenLabsModel) {
+        voiceConfig.modelId = config.elevenLabsModel;
+      }
+      
+      const resolvedVoice = resolveVoice(voiceConfig);
       console.log("Selected interviewer:", interviewerKey);
       console.log("Resolved voice:", resolvedVoice);
 
@@ -341,18 +366,28 @@ export function useVapiInterview() {
       console.log("System prompt length:", systemPrompt.length);
       console.log("First message:", firstMessage);
 
-      const assistantConfig: CreateAssistantDTO = {
+      const assistantConfig: any = {
         model: {
           provider: "openai",
-          model: "gpt-4.1",
+          model: config.model || "gpt-4.1",
           messages: [{ role: "system", content: systemPrompt }],
         },
         voice: resolvedVoice,
+        credentials: [
+          {
+            provider: "11labs",
+            apiKey: import.meta.env.VITE_ELEVENLABS_API_KEY
+          }
+        ],
         transcriber: { provider: "deepgram", model: "nova-3", language: "en" },
         firstMessage,
         backgroundSpeechDenoisingPlan: {
           smartDenoisingPlan: { enabled: true },
         },
+        silenceTimeoutSeconds: 30,
+        variableValues: {
+            "name": interviewer.name
+        }
       };
       const call = await vapi.start(assistantConfig);
       console.log("Vapi call object:", call);

@@ -8,6 +8,12 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {
+    // For offline development, if no keys are set, we auto-authenticate as admin.
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      setStatus("authenticated");
+      return;
+    }
+
     // Check whatever session Supabase already has persisted
     supabase.auth.getSession().then(({ data: { session } }) => {
       setStatus(session ? "authenticated" : "unauthenticated");

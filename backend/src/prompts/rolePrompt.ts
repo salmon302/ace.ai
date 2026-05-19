@@ -41,26 +41,37 @@ const ROLE_EMPHASIS: Record<string, string> = {
 
 /**
  * Returns a role-specific context string to embed in interview prompts.
- *
- * @param role   - User's engineering discipline: "frontend" | "backend" | "fullstack"
- * @param type   - Interview type: "technical" | "behavioral" | "followup"
- * @param level  - Optional experience label (e.g. "junior", "senior")
  */
-export function buildInterviewPrompt(role: string, type: string, level?: string): string {
+export function buildInterviewPrompt(
+  role: string,
+  type: string,
+  level?: string,
+  jobDescription?: string,
+  resume?: string
+): string {
   const normalized = role.toLowerCase();
   const topics = ROLE_TOPICS[normalized] ?? ROLE_TOPICS.fullstack;
   const emphasis = ROLE_EMPHASIS[normalized] ?? ROLE_EMPHASIS.fullstack;
   const topicList = topics.join(", ");
   const levelLabel = level ? ` for a ${level} candidate` : "";
 
+  let prompt = "";
+  
+  if (role === "custom" && jobDescription) {
+    prompt = `You are evaluating a candidate for a specific role based on this Job Description:\n\n### JOB DESCRIPTION:\n${jobDescription}\n\n`;
+  } else {
+    prompt = `You are evaluating a ${normalized} engineer${levelLabel}. ${emphasis} Core areas: ${topicList}. `;
+  }
+
+  if (resume) {
+    prompt += `\n\n### CANDIDATE RESUME/CONTEXT:\n${resume}\n\nUse the candidate's specific experience from their resume to tailor your questions and drill into their past projects and technical claims.`;
+  }
+
   if (type === "technical") {
-    return `You are evaluating a ${normalized} engineer${levelLabel}. ${emphasis} Draw questions from these areas: ${topicList}.`;
+    prompt += ` This is a TECHNICAL interview. Focus on deep architecture, coding logic, and implementation details.`;
+  } else if (type === "behavioral") {
+    prompt += ` This is a BEHAVIORAL/HR SCREENING interview. Use the STAR method to evaluate leadership, conflict resolution, and soft skills relevant to the role.`;
   }
 
-  if (type === "behavioral") {
-    return `You are evaluating a ${normalized} engineer${levelLabel}. Tailor scenarios to ${normalized} engineering work. Relevant domains: ${topicList}.`;
-  }
-
-  // followup or any other type
-  return `You are evaluating a ${normalized} engineer${levelLabel}. ${emphasis}`;
+  return prompt;
 }

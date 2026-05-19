@@ -54,10 +54,12 @@ export async function generateInterviewQuestions(
   difficulty: string,
   level: string,
   language?: string,
+  jobDescription?: string,
+  resume?: string,
 ): Promise<CodingProblem[]> {
   const res = await apiFetch("/analysis/questions", {
     method: "POST",
-    body: JSON.stringify({ role, difficulty, level, language }),
+    body: JSON.stringify({ role, difficulty, level, language, jobDescription, resume }),
   });
   if (!res.ok) throw new Error("Failed to generate questions");
   const data = await res.json() as { problems: CodingProblem[] };

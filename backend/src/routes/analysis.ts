@@ -10,14 +10,16 @@ const router = Router();
 // POST /api/analysis/questions — generate 3 role-aware technical questions
 router.post("/questions", validateQuestionGeneration, async (req: Request, res: Response) => {
   try {
-    const { role, difficulty, level, language } = req.body as {
+    const { role, difficulty, level, language, jobDescription, resume } = req.body as {
       role: string;
       difficulty: string;
       level: string;
       language?: string;
+      jobDescription?: string;
+      resume?: string;
     };
 
-    const problems = await generateInterviewQuestions(role, difficulty, level, language);
+    const problems = await generateInterviewQuestions(role, difficulty, level, language, jobDescription, resume);
     res.json({ problems });
   } catch (err) {
     console.error("Error generating questions:", err);

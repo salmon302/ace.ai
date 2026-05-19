@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { supabase } from "../services/supabase";
+import { DISABLE_SUPABASE } from "../config";
 
 export async function authMiddleware(
   req: Request,
@@ -7,6 +8,14 @@ export async function authMiddleware(
   next: NextFunction,
 ): Promise<void> {
   const header = req.headers.authorization;
+  
+  // Dev bypass if Supabase is disabled
+  if (DISABLE_SUPABASE && (!header || header === "Bearer dev-token")) {
+    req.user = { id: "admin-uuid-0000-0000-000000000000", email: "admin@offline.local" };
+    next();
+    return;
+  }
+
   if (!header?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Authentication required" });
     return;
