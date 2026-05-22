@@ -3,12 +3,12 @@ import { DeepgramClient } from "@deepgram/sdk";
 import { authMiddleware } from "../middleware/auth";
 
 const router = Router();
-const deepgram = new DeepgramClient(process.env.DEEPGRAM_API_KEY as string);
+const deepgram = new DeepgramClient({ accessToken: process.env.DEEPGRAM_API_KEY as string });
 
 // Provision ephemeral keys for STT
 router.get("/stt-token", authMiddleware, async (req, res) => {
   try {
-    const { result, error } = await deepgram.manage.createProjectKey(
+    const response = await deepgram.manage.v1.projects.keys.create(
       process.env.DEEPGRAM_PROJECT_ID as string,
       {
         comment: "Ephemeral key for interview session",
@@ -18,13 +18,7 @@ router.get("/stt-token", authMiddleware, async (req, res) => {
       }
     );
 
-    if (error) {
-       console.error("Deepgram token error:", error);
-       res.status(500).json({ error: "Failed to create STT token" });
-       return;
-    }
-
-    res.json({ token: result.key });
+    res.json({ token: response.key });
   } catch (error) {
     console.error("STT token exception:", error);
     res.status(500).json({ error: "Internal server error during STT token generation" });
@@ -34,7 +28,7 @@ router.get("/stt-token", authMiddleware, async (req, res) => {
 // Proxy for ElevenLabs TTS to avoid CORS and hide API key
 router.post("/tts", authMiddleware, async (req, res) => {
   try {
-    const { text, voiceId } = req.body;
+    const { text, voiceId, modelId } = req.body;
     const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
     
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
@@ -45,7 +39,7 @@ router.post("/tts", authMiddleware, async (req, res) => {
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_monolingual_v1",
+        model_id: modelId ?? "eleven_monolingual_v1",
         voice_settings: {
           stability: 0.5,
           similarity_boost: 0.5,

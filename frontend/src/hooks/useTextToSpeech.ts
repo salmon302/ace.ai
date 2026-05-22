@@ -1,44 +1,57 @@
 import { useCallback, useRef } from "react";
-import { apiFetch } from "../services/auth";
 
 export function useTextToSpeech() {
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const speak = useCallback(async (text: string, voiceId: string = "21m00Tcm4TlvDq8ikWAM") => {
-    try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-
-      // Stop current playback if any (barge-in support)
-      if (currentSourceRef.current) {
-        currentSourceRef.current.stop();
-      }
-
-      const response = await apiFetch("/tokens/tts", {
-        method: "POST",
-        body: JSON.stringify({ text, voiceId }),
-      });
-
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
-      
-      const source = audioContextRef.current.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContextRef.current.destination);
-      source.start(0);
-      
-      currentSourceRef.current = source;
-    } catch (error) {
-      console.error("Failed to speak text:", error);
+  const speakWithBrowserTTS = useCallback((text: string) => {
+    if (!window.speechSynthesis) {
+      throw new Error("Speech synthesis is not available in this browser");
     }
+
+    window.speechSynthesis.cancel();
+
+    return new Promise<void>((resolve, reject) => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      utterance.lang = "en-US";
+      utterance.onend = () => {
+        if (speechUtteranceRef.current === utterance) {
+          speechUtteranceRef.current = null;
+        }
+        resolve();
+      };
+      utterance.onerror = () => {
+        if (speechUtteranceRef.current === utterance) {
+          speechUtteranceRef.current = null;
+        }
+        reject(new Error("Speech synthesis failed"));
+      };
+
+      speechUtteranceRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+    });
   }, []);
 
+  const speak = useCallback(async (
+    text: string,
+    _voiceId: string = "21m00Tcm4TlvDq8ikWAM",
+    _modelId: string = "eleven_monolingual_v1",
+  ): Promise<"browser-speech"> => {
+    try {
+      await speakWithBrowserTTS(text);
+      return "browser-speech";
+    } catch (error) {
+      console.error("Failed to speak text:", error);
+      return "browser-speech";
+    }
+  }, [speakWithBrowserTTS]);
+
   const stop = useCallback(() => {
-    if (currentSourceRef.current) {
-      currentSourceRef.current.stop();
-      currentSourceRef.current = null;
+    if (speechUtteranceRef.current && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      speechUtteranceRef.current = null;
     }
   }, []);
 

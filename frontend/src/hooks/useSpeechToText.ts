@@ -1,4 +1,4 @@
-import { createClient, LiveTranscriptionEvents } from "@deepgram/sdk";
+import { DeepgramClient } from "@deepgram/sdk";
 import { useState, useCallback, useRef } from "react";
 import { apiFetch } from "../services/auth";
 
@@ -12,34 +12,39 @@ export function useSpeechToText() {
       const response = await apiFetch("/tokens/stt-token");
       const { token } = await response.json();
 
-      const deepgram = createClient(token);
-      const connection = deepgram.listen.live({
+      const deepgram = new DeepgramClient({ accessToken: token });
+      const connection = await deepgram.listen.v1.connect({
         model: "nova-2",
         language: "en-US",
-        smart_format: true,
+        punctuate: "true",
+        interim_results: "true",
       });
 
-      connection.on(LiveTranscriptionEvents.Open, () => {
+      connection.on("open", () => {
         setIsListening(true);
         console.log("Deepgram connection opened");
 
         const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0 && connection.getReadyState() === 1) {
-            connection.send(event.data);
+            connection.sendMedia(event.data);
           }
         };
         mediaRecorder.start(100); // 100ms chunks
       });
 
-      connection.on(LiveTranscriptionEvents.Transcript, (data) => {
+      connection.on("message", (data) => {
+        if (data.type !== "Results" || !data.is_final) {
+          return;
+        }
+
         const text = data.channel.alternatives[0].transcript;
         if (text) {
           setTranscript((prev) => prev + " " + text);
         }
       });
 
-      connection.on(LiveTranscriptionEvents.Close, () => {
+      connection.on("close", () => {
         setIsListening(false);
         console.log("Deepgram connection closed");
       });

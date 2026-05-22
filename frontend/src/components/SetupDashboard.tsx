@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import * as Slider from "@radix-ui/react-slider";
 import { vapi } from "../lib/vapi";
 import { INTERVIEWERS, resolveVoice } from "../hooks/useVapiInterview";
+import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { TOPIC_CATEGORIES } from "../data/technicalProblems";
 import { DashboardNavbar } from "./DashboardNavbar";
 import { InterviewerCard } from "./InterviewerCard";
@@ -53,6 +54,7 @@ export function SetupDashboard() {
   ];
 
   const previewCleanupRef = useRef<(() => void) | null>(null);
+  const { speak: speakPreview, stop: stopPreview } = useTextToSpeech();
 
   const experienceLevels = ["Intern", "Entry", "Junior", "Senior"];
 
@@ -85,10 +87,32 @@ export function SetupDashboard() {
     console.log("Previewing voice:", key);
     setPreviewingKey(key);
 
-    let cleaned = false;
-    let safetyTimeout: ReturnType<typeof setTimeout>;
+    if (voiceConfig.provider === "11labs") {
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        stopPreview();
+        setPreviewingKey(null);
+        previewCleanupRef.current = null;
+      };
+
+      previewCleanupRef.current = cleanup;
+
+      try {
+        await speakPreview(previewText, voiceConfig.voiceId, voiceConfig.modelId ?? elevenLabsModel);
+      } catch (err) {
+        console.error("Manual voice preview failed:", err);
+        console.warn("Could not preview voice for:", key);
+      } finally {
+        cleanup();
+      }
+
+      return;
+    }
 
     // Unified cleanup — idempotent, safe to call multiple times
+    let cleaned = false;
     const cleanup = () => {
       if (cleaned) return;
       cleaned = true;
@@ -118,7 +142,7 @@ export function SetupDashboard() {
       cleanup();
     };
 
-    safetyTimeout = setTimeout(cleanup, 12000);
+    const safetyTimeout: ReturnType<typeof setTimeout> = setTimeout(() => cleanup(), 12000);
     previewCleanupRef.current = cleanup;
 
     vapi.on("speech-end", onSpeechEnd);
